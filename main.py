@@ -13,6 +13,8 @@ class HRRecorderApp:
         
         self.is_recording = False
         self.subject_id = "test"
+        self.sampling_interval = 10
+        self.last_sample_time = 0
         self.selected_device_type = "Polar Verity Sense"
         
         # Asyncio Loop Thread - Removed for single thread approach
@@ -42,6 +44,9 @@ class HRRecorderApp:
             
             dpg.add_separator()
             
+            dpg.add_input_int(label="Sampling (sec)", default_value=10, 
+                              callback=self.update_sampling, tag="sampling_input", min_value=1)
+
             dpg.add_text("Heart Rate Monitor")
             with dpg.plot(label="Live Heart Rate", height=300, width=-1):
                 dpg.add_plot_legend()
@@ -50,6 +55,8 @@ class HRRecorderApp:
                 dpg.add_line_series([], [], label="HR", parent="y_axis", tag="hr_series")
 
             dpg.add_button(label="Start Recording", callback=self.toggle_recording, tag="record_btn", show=True)
+            dpg.add_spacer(height=10)
+            dpg.add_button(label="Exit", callback=self.exit_app)
 
         dpg.setup_dearpygui()
         dpg.show_viewport()
@@ -59,6 +66,9 @@ class HRRecorderApp:
 
     def update_subject_id(self, sender, app_data):
         self.subject_id = app_data
+
+    def update_sampling(self, sender, app_data):
+        self.sampling_interval = app_data
 
     def update_device_type(self, sender, app_data):
         self.selected_device_type = app_data
@@ -86,10 +96,14 @@ class HRRecorderApp:
             self.is_recording = True
             dpg.set_item_label("record_btn", "Stop Recording")
             
+            dpg.configure_item("sampling_input", enabled=False)
+            
+            self.data_manager.set_metadata(self.subject_id, self.sampling_interval)
             filename = self.data_manager.create_filename(self.subject_id)
             dpg.set_value("status_text", f"Recording to: {filename}")
             
             self.start_time = time.time()
+            self.last_sample_time = 0
             self.plot_data_x = []
             self.plot_data_y = []
             self.data_manager.data_buffer = [] # Reset buffer
@@ -102,6 +116,7 @@ class HRRecorderApp:
             # Stop
             self.is_recording = False
             dpg.set_item_label("record_btn", "Start Recording")
+            dpg.configure_item("sampling_input", enabled=True)
             dpg.set_value("status_text", "Recording Stopped. Saving...")
             
             self.loop.create_task(self.recorder.stop_hr_stream())
@@ -121,9 +136,12 @@ class HRRecorderApp:
             ts, hr = self.data_queue.get()
             
             if self.is_recording:
-                self.data_manager.add_data_point(ts, hr)
-                if len(self.data_manager.data_buffer) >= 60:
-                     self.data_manager.save_buffer() 
+                # Sampling logic: only save if enough time has passed
+                if ts - self.last_sample_time >= self.sampling_interval:
+                    self.data_manager.add_data_point(ts, hr)
+                    self.last_sample_time = ts
+                    if len(self.data_manager.data_buffer) >= 60:
+                        self.data_manager.save_buffer() 
                 
                 if self.start_time:
                     rel_time = ts - self.start_time
@@ -144,6 +162,9 @@ class HRRecorderApp:
             self.update_plot()
             dpg.render_dearpygui_frame()
             await asyncio.sleep(0.001) # Yield to allow BLE events to process
+
+    def exit_app(self, sender=None, app_data=None):
+        dpg.stop_dearpygui()
 
     def run(self):
         # Setup AsyncIO Loop (Main Thread)

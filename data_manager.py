@@ -10,11 +10,23 @@ class DataManager:
         self.current_filename = None
         self.data_buffer = []
 
+        # Metadata fields
+        self.subject_id = "unknown"
+        self.sampling_interval = 10
+        self.start_datetime = datetime.now()
+
+    def set_metadata(self, subject_id, sampling_interval):
+        self.subject_id = subject_id
+        self.sampling_interval = sampling_interval
+        self.start_datetime = datetime.now()
+
     def create_filename(self, subject_id):
-        now = datetime.now()
+        # We use the time from set_metadata if available, or now
+        now = self.start_datetime
         date_str = now.strftime("%Y%m%d")
-        time_str = now.strftime("%H%M")
-        # Sanitize subject_id to be safe for filenames
+        time_str = now.strftime("%H%M%S")
+        
+        # Sanitize subject_id
         safe_subject_id = "".join([c for c in subject_id if c.isalnum() or c in ('-', '_')])
         if not safe_subject_id:
             safe_subject_id = "unknown"
@@ -31,32 +43,31 @@ class DataManager:
         })
 
     def save_buffer(self):
-        """Saves current buffer to disk and clears it (or appends).
-        For simplicity, we might read-modify-write or just append if we structured it correctly.
-        Here we will write the whole list for now, or append to a list in a file.
-        Efficient approach: Read existing, append, write back? Or just write chunk?
-        Request asked for periodic save to prevent data loss.
-        """
         if not self.current_filename:
             return
 
-        # Simple approach: Load existing data if file exists, append, save.
-        # Warning: This gets slow if data grows large.
-        # Better approach for logging: Write per line or append to a JSON array structure carefully.
-        # Given the requirements, we'll try to keep it robust.
-        
-        all_data = []
+        date_str = self.start_datetime.strftime("%Y-%m-%d")
+        time_str = self.start_datetime.strftime("%H:%M:%S")
+
+        data_structure = {
+            "subject": self.subject_id,
+            "date": date_str,
+            "time": time_str,
+            "sampling_interval_sec": self.sampling_interval,
+            "data": []
+        }
+
         if os.path.exists(self.current_filename):
             try:
                 with open(self.current_filename, 'r') as f:
-                   if os.path.getsize(self.current_filename) > 0:
-                       all_data = json.load(f)
+                    if os.path.getsize(self.current_filename) > 0:
+                        data_structure = json.load(f)
             except json.JSONDecodeError:
-                pass # file corrupted or empty
+                pass 
         
-        all_data.extend(self.data_buffer)
+        data_structure["data"].extend(self.data_buffer)
         
         with open(self.current_filename, 'w') as f:
-            json.dump(all_data, f, indent=2)
+            json.dump(data_structure, f, indent=2)
             
         self.data_buffer = [] # Clear buffer after save
