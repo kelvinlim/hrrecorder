@@ -103,7 +103,8 @@ class HRRecorderApp:
             dpg.set_value("status_text", f"Recording to: {filename}")
             
             self.start_time = time.time()
-            self.last_sample_time = 0
+            self.last_sample_time = time.time()
+            self.last_save_time = time.time()
             self.plot_data_x = []
             self.plot_data_y = []
             self.data_manager.data_buffer = [] # Reset buffer
@@ -140,8 +141,11 @@ class HRRecorderApp:
                 if ts - self.last_sample_time >= self.sampling_interval:
                     self.data_manager.add_data_point(ts, hr)
                     self.last_sample_time = ts
-                    if len(self.data_manager.data_buffer) >= 60:
-                        self.data_manager.save_buffer() 
+                    # Periodic save every 30 seconds
+                    if time.time() - self.last_save_time >= 30:
+                        self.data_manager.save_buffer()
+                        self.last_save_time = time.time()
+                        dpg.set_value("status_text", f"Auto-saved at {time.strftime('%H:%M:%S')}")
                 
                 if self.start_time:
                     rel_time = ts - self.start_time
