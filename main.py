@@ -15,7 +15,7 @@ class HRRecorderApp:
         self.subject_id = "test"
         self.sampling_interval = 10
         self.last_sample_time = 0
-        self.selected_device_type = "Polar Verity Sense"
+        self.selected_device_type = "Polar Sense"
         
         # Asyncio Loop Thread - Removed for single thread approach
         # self.loop = asyncio.new_event_loop()
@@ -36,8 +36,8 @@ class HRRecorderApp:
             
             dpg.add_input_text(label="Subject ID", default_value="test", callback=self.update_subject_id)
             
-            dpg.add_combo(label="Device Type", items=["Polar Verity Sense", "Polar H10"], 
-                          default_value="Polar Verity Sense", callback=self.update_device_type)
+            dpg.add_combo(label="Device Type", items=["Polar Sense", "Polar H10"], 
+                          default_value="Polar Sense", callback=self.update_device_type)
             
             dpg.add_button(label="Connect", callback=self.connect_device)
             dpg.add_text("Status: Disconnected", tag="status_text")
