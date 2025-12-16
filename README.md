@@ -86,14 +86,16 @@ python main.py
 ### Using the Application
 
 1. **Enter Subject ID**: Type an identifier for the recording session
-2. **Select Device Type**: Choose "Polar Sense" or "Polar H10" from dropdown
-3. **Scan Devices**: Click "Scan Devices" to list nearby devices as `Name (Address)`; entries marked `[busy]` are already selected in this app window
+2. **Select Device Type**: Choose "Polar Sense" or "Polar H10" from dropdown (this filters scan results)
+3. **Scan Devices**: Click "Scan Devices" to list nearby devices matching the selected type as `Name (Address)`; entries marked `[busy]` are already selected in this app window
 4. **Select Device**: Pick the exact device you want; selection stores its address
 5. **Connect**: Click "Connect" to pair to that specific address (prevents accidental cross-pairing)
 6. **Set Sampling**: Adjust sampling interval in seconds (default: 10)
 7. **Start Recording**: Click "Start Recording" to begin data collection
 8. **Monitor**: Watch real-time heart rate plot
 9. **Stop Recording**: Click "Stop Recording" to end and save data
+
+**Note**: The version number is displayed in the lower right corner of the app window.
 
 ### Multi-user / multi-device tips
 - Run one app window per sensor; each window soft-locks the device it selects (shows `[busy]` in the list)
@@ -131,7 +133,7 @@ JSON structure:
 ### Download
 
 Download the latest release from the [Releases page](https://github.com/kelvinlim/hrrecorder/releases).
-
+HRRecorder-Installer
 **Windows 10/11 (x64)**
 - `hrrecorder-setup.exe` - Windows Installer (Recommended)
 - `hrrecorder.exe` - Standalone executable
@@ -158,8 +160,8 @@ Each release includes SHA256 checksums (`.sha256` files). To verify:
 
 **Windows (PowerShell):**
 ```powershell
-Get-FileHash hrrecorder-setup.exe -Algorithm SHA256
-# Compare with contents of hrrecorder-setup.exe.sha256
+Get-FileHash HRRecorder-Installer.exe -Algorithm SHA256
+# Compare with contents of HRRecorder-Installer.exe.sha256
 ```
 
 **macOS/Linux:**
@@ -183,7 +185,7 @@ iscc hrrecorder.iss
 
 Outputs:
 - `dist/hrrecorder.exe` - Standalone executable
-- `dist/hrrecorder-setup.exe` - Windows installer
+- `dist/HRRecorder-Installer.exe` - Windows installer
 
 **macOS:**
 ```bash
@@ -217,8 +219,8 @@ This project uses GitHub Actions to automatically build releases for Windows and
 ### Creating a New Release
 
 1. **Update version number** in the following files:
-   - `hrrecorder.spec` (CFBundleShortVersionString for macOS)
-   - `hrrecorder.iss` (MyAppVersion for Windows)
+   - `version.py` (`__version__` - displays in app and used by macOS bundle)
+   - `hrrecorder.iss` (MyAppVersion for Windows installer)
 
 2. **Commit your changes:**
    ```bash
