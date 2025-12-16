@@ -66,7 +66,7 @@ class HRRecorderApp:
             dpg.add_button(label="Exit", callback=self.exit_app)
             
             # Add bottom padding so version label stays visible
-            dpg.add_spacer(height=24)
+            dpg.add_spacer(height=40)
             with dpg.group(horizontal=True):
                 dpg.add_spacer(width=-1)
                 dpg.add_text(f"v{__version__}", color=(128, 128, 128))
