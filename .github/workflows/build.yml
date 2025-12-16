@@ -26,6 +26,12 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
+    - name: Verify installation
+      run: |
+        python -c "import dearpygui; print('dearpygui OK')"
+        python -c "import bleak; print('bleak OK')"
+        python -c "import polar_python; print('polar_python OK')"
+        
     - name: Build with PyInstaller
       run: |
         pyinstaller hrrecorder.spec
@@ -74,9 +80,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
+    - name: Verify installation
+      run: |
+        python -c "import dearpygui; print('dearpygui OK')"
+        python -c "import bleak; print('bleak OK')"
+        python -c "import polar_python; print('polar_python OK')"
+        
     - name: Build with PyInstaller
       run: |
-        pyinstaller hrrecorder.spec -- --target-arch arm64
+        pyinstaller hrrecorder.spec
         
     - name: Create DMG
       run: |
