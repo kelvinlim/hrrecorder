@@ -4,6 +4,7 @@ import time
 import asyncio
 from data_manager import DataManager
 from recorder import PolarRecorder
+from version import __version__
 import queue
 
 class HRRecorderApp:
@@ -63,6 +64,11 @@ class HRRecorderApp:
             dpg.add_button(label="Start Recording", callback=self.toggle_recording, tag="record_btn", show=True)
             dpg.add_spacer(height=10)
             dpg.add_button(label="Exit", callback=self.exit_app)
+            
+            dpg.add_spacer(height=5)
+            with dpg.group(horizontal=True):
+                dpg.add_spacer(width=-1)
+                dpg.add_text(f"v{__version__}", color=(128, 128, 128))
 
         dpg.setup_dearpygui()
         dpg.show_viewport()

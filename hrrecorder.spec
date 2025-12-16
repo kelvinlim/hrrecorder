@@ -2,6 +2,10 @@
 import sys
 import os
 
+# Import version
+with open('version.py') as f:
+    exec(f.read())
+
 # Platform detection
 IS_MAC = sys.platform == 'darwin'
 IS_WIN = sys.platform == 'win32'
@@ -57,8 +61,8 @@ if IS_MAC:
         info_plist={
             'CFBundleName': 'HR Recorder',
             'CFBundleDisplayName': 'HR Recorder',
-            'CFBundleShortVersionString': '1.0.0',
-            'CFBundleVersion': '1.0.0',
+            'CFBundleShortVersionString': __version__,
+            'CFBundleVersion': __version__,
             'NSHumanReadableCopyright': 'Copyright © 2025 Kelvin Lim',
             'NSBluetoothAlwaysUsageDescription': 'This app requires Bluetooth to connect to Polar heart rate monitors.',
             'NSBluetoothPeripheralUsageDescription': 'This app requires Bluetooth to connect to Polar heart rate monitors.',
