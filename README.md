@@ -115,31 +115,169 @@ JSON structure:
 }
 ```
 
-## Building Executables
+## Installation from Pre-built Releases
 
-### Windows
+### Download
 
-```bash
-pyinstaller hrrecorder.spec
+Download the latest release from the [Releases page](https://github.com/kelvinlim/hrrecorder/releases).
+
+**Windows 10/11 (x64)**
+- `hrrecorder-setup.exe` - Windows Installer (Recommended)
+- `hrrecorder.exe` - Standalone executable
+
+**macOS (Apple Silicon / M1/M2/M3)**
+- `hrrecorder.dmg` - macOS Disk Image
+
+### Installing
+
+**Windows:**
+1. Download `hrrecorder-setup.exe`
+2. Run the installer and follow prompts
+3. Launch from Start Menu or Desktop shortcut
+
+**macOS:**
+1. Download `hrrecorder.dmg`
+2. Open the DMG file
+3. Drag HR Recorder to your Applications folder
+4. Launch from Applications
+
+### Verifying Downloads
+
+Each release includes SHA256 checksums (`.sha256` files). To verify:
+
+**Windows (PowerShell):**
+```powershell
+Get-FileHash hrrecorder-setup.exe -Algorithm SHA256
+# Compare with contents of hrrecorder-setup.exe.sha256
 ```
 
-The executable will be created in `dist/hrrecorder.exe`
-
-### macOS
-
+**macOS/Linux:**
 ```bash
-pyinstaller hrrecorder.spec
+shasum -a 256 hrrecorder.dmg
+# Compare with contents of hrrecorder.dmg.sha256
 ```
 
-The application bundle will be created in `dist/hrrecorder.app`
+## Building from Source
+
+### Local Build
+
+**Windows:**
+```bash
+# Build executable
+pyinstaller hrrecorder.spec
+
+# Create installer (requires Inno Setup)
+iscc hrrecorder.iss
+```
+
+Outputs:
+- `dist/hrrecorder.exe` - Standalone executable
+- `dist/hrrecorder-setup.exe` - Windows installer
+
+**macOS:**
+```bash
+# Build app bundle
+pyinstaller hrrecorder.spec
+
+# Create DMG
+chmod +x create_dmg.sh
+./create_dmg.sh
+```
+
+Outputs:
+- `dist/hrrecorder.app` - macOS application bundle
+- `dist/hrrecorder.dmg` - Disk image installer
 
 ### Build Configuration
 
 The `hrrecorder.spec` file configures PyInstaller with:
-- Single-file executable
+- Platform-specific icons and metadata
 - Console disabled (windowed mode)
 - UPX compression enabled
-- macOS app bundle support
+- macOS app bundle with proper Info.plist
+- Bluetooth permissions for macOS
+
+## Releases and CI/CD
+
+### Automated Builds
+
+This project uses GitHub Actions to automatically build releases for Windows and macOS when version tags are pushed.
+
+### Creating a New Release
+
+1. **Update version number** in the following files:
+   - `hrrecorder.spec` (CFBundleShortVersionString for macOS)
+   - `hrrecorder.iss` (MyAppVersion for Windows)
+
+2. **Commit your changes:**
+   ```bash
+   git add .
+   git commit -m "Bump version to v1.0.1"
+   ```
+
+3. **Create and push a version tag:**
+   ```bash
+   # Create annotated tag (recommended)
+   git tag -a v1.0.1 -m "Release version 1.0.1"
+   
+   # Or create lightweight tag
+   git tag v1.0.1
+   
+   # Push commits and tags
+   git push origin main
+   git push origin v1.0.1
+   ```
+
+4. **Monitor the build:**
+   - Go to the "Actions" tab in your GitHub repository
+   - Watch the "Build and Release" workflow execute
+   - Builds typically take 5-10 minutes
+
+5. **Release published automatically:**
+   - Once builds complete, a new release is created
+   - Release includes Windows installer, Windows executable, and macOS DMG
+   - SHA256 checksums generated for all files
+
+### Version Tag Format
+
+Use semantic versioning with a `v` prefix:
+- `v1.0.0` - Major release
+- `v1.1.0` - Minor release (new features)
+- `v1.0.1` - Patch release (bug fixes)
+- `v1.0.0-beta` - Pre-release
+- `v1.0.0-rc1` - Release candidate
+
+### Viewing Releases
+
+```bash
+# List all tags
+git tag -l
+
+# View tag details
+git show v1.0.0
+
+# Delete local tag (if needed)
+git tag -d v1.0.0
+
+# Delete remote tag (if needed)
+git push origin --delete v1.0.0
+```
+
+### Manual Release Process
+
+If you need to create a release manually (without CI/CD):
+
+1. Build for each platform locally
+2. Create release on GitHub:
+   ```bash
+   # Using GitHub CLI
+   gh release create v1.0.0 \
+     dist/hrrecorder-setup.exe \
+     dist/hrrecorder.exe \
+     dist/hrrecorder.dmg \
+     --title "HR Recorder v1.0.0" \
+     --notes "Release notes here"
+   ```
 
 ## Development
 

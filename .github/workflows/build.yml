@@ -1,26 +1,25 @@
-name: Build
+name: Build and Release
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
+    tags: [ 'v*' ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
 
 jobs:
-  build:
-    name: Build on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest]
-
+  build-windows:
+    name: Build for Windows x64
+    runs-on: windows-latest
+    
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.13' 
+        python-version: '3.11'
         
     - name: Install dependencies
       run: |
@@ -31,8 +30,127 @@ jobs:
       run: |
         pyinstaller hrrecorder.spec
         
-    - name: Upload Artifact
+    - name: Create Windows Installer
+      run: |
+        choco install innosetup -y
+        iscc hrrecorder.iss
+      
+    - name: Generate checksums
+      run: |
+        Get-FileHash dist/hrrecorder.exe -Algorithm SHA256 | Select-Object Hash | Out-File -FilePath dist/hrrecorder.exe.sha256
+        Get-FileHash dist/hrrecorder-setup.exe -Algorithm SHA256 | Select-Object Hash | Out-File -FilePath dist/hrrecorder-setup.exe.sha256
+        
+    - name: Upload Windows Executable
       uses: actions/upload-artifact@v4
       with:
-        name: hrrecorder-${{ runner.os }}
-        path: dist/
+        name: hrrecorder-windows-x64
+        path: |
+          dist/hrrecorder.exe
+          dist/hrrecorder.exe.sha256
+          
+    - name: Upload Windows Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: hrrecorder-windows-x64-installer
+        path: |
+          dist/hrrecorder-setup.exe
+          dist/hrrecorder-setup.exe.sha256
+
+  build-macos-silicon:
+    name: Build for macOS ARM64 (Silicon)
+    runs-on: macos-14  # Apple Silicon runner
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Build with PyInstaller
+      run: |
+        pyinstaller hrrecorder.spec -- --target-arch arm64
+        
+    - name: Create DMG
+      run: |
+        chmod +x create_dmg.sh
+        ./create_dmg.sh
+        
+    - name: Generate checksums
+      run: |
+        shasum -a 256 dist/hrrecorder.dmg > dist/hrrecorder.dmg.sha256
+        
+    - name: Upload macOS DMG
+      uses: actions/upload-artifact@v4
+      with:
+        name: hrrecorder-macos-arm64
+        path: |
+          dist/hrrecorder.dmg
+          dist/hrrecorder.dmg.sha256
+
+  release:
+    name: Create GitHub Release
+    needs: [build-windows, build-macos-silicon]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+        
+    - name: Prepare release assets
+      run: |
+        mkdir -p release
+        cp artifacts/hrrecorder-windows-x64/* release/
+        cp artifacts/hrrecorder-windows-x64-installer/* release/
+        cp artifacts/hrrecorder-macos-arm64/* release/
+        
+    - name: Extract version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release/*
+        name: HR Recorder ${{ steps.get_version.outputs.VERSION }}
+        body: |
+          ## HR Recorder ${{ steps.get_version.outputs.VERSION }}
+          
+          ### Downloads
+          
+          **Windows 10/11 (x64)**
+          - `hrrecorder-setup.exe` - Windows Installer (Recommended)
+          - `hrrecorder.exe` - Standalone executable
+          
+          **macOS (Apple Silicon / M1/M2/M3)**
+          - `hrrecorder.dmg` - macOS Disk Image
+          
+          ### Checksums
+          SHA256 checksums are provided for all files (`.sha256` files)
+          
+          ### Installation
+          - **Windows**: Run `hrrecorder-setup.exe` or double-click `hrrecorder.exe`
+          - **macOS**: Open `hrrecorder.dmg` and drag to Applications folder
+          
+          ### Verification
+          Verify file integrity using SHA256 checksums before installation.
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
