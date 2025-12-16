@@ -29,6 +29,8 @@ WizardStyle=modern
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
+CloseApplications=no
+CloseApplicationsFilter=*.exe
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
