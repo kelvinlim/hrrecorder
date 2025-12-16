@@ -21,7 +21,7 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 LicenseFile=
 OutputDir=dist
-OutputBaseFilename=hrrecorder-setup
+OutputBaseFilename=HRRecorder-Installer
 SetupIconFile=hrrecorder.ico
 Compression=lzma
 SolidCompression=yes
@@ -29,8 +29,9 @@ WizardStyle=modern
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
-CloseApplications=no
-CloseApplicationsFilter=*.exe
+CloseApplications=yes
+CloseApplicationsFilter=hrrecorder.exe
+RestartApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -39,8 +40,22 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "dist\hrrecorder.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\hrrecorder.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace; BeforeInstall: CloseApp
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
+
+[Code]
+function InitializeSetup(): Boolean;
+begin
+  Result := True;
+end;
+
+procedure CloseApp();
+var
+  ResultCode: Integer;
+begin
+  // Try to close the app gracefully using taskkill
+  Exec('taskkill.exe', '/F /IM hrrecorder.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

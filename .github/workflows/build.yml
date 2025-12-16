@@ -44,7 +44,7 @@ jobs:
     - name: Generate checksums
       run: |
         Get-FileHash dist/hrrecorder.exe -Algorithm SHA256 | Select-Object Hash | Out-File -FilePath dist/hrrecorder.exe.sha256
-        Get-FileHash dist/hrrecorder-setup.exe -Algorithm SHA256 | Select-Object Hash | Out-File -FilePath dist/hrrecorder-setup.exe.sha256
+        Get-FileHash dist/HRRecorder-Installer.exe -Algorithm SHA256 | Select-Object Hash | Out-File -FilePath dist/HRRecorder-Installer.exe.sha256
         
     - name: Upload Windows Executable
       uses: actions/upload-artifact@v4
@@ -59,8 +59,8 @@ jobs:
       with:
         name: hrrecorder-windows-x64-installer
         path: |
-          dist/hrrecorder-setup.exe
-          dist/hrrecorder-setup.exe.sha256
+          dist/HRRecorder-Installer.exe
+          dist/HRRecorder-Installer.exe.sha256
 
   build-macos-silicon:
     name: Build for macOS ARM64 (Silicon)
@@ -147,7 +147,7 @@ jobs:
           ### Downloads
           
           **Windows 10/11 (x64)**
-          - `hrrecorder-setup.exe` - Windows Installer (Recommended)
+          - `HRRecorder-Installer.exe` - Windows Installer (Recommended)
           - `hrrecorder.exe` - Standalone executable
           
           **macOS (Apple Silicon / M1/M2/M3)**
@@ -157,7 +157,7 @@ jobs:
           SHA256 checksums are provided for all files (`.sha256` files)
           
           ### Installation
-          - **Windows**: Run `hrrecorder-setup.exe` or double-click `hrrecorder.exe`
+          - **Windows**: Run `HRRecorder-Installer.exe` or double-click `hrrecorder.exe`
           - **macOS**: Open `hrrecorder.dmg` and drag to Applications folder
           
           ### Verification
