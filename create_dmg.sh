@@ -36,18 +36,31 @@ hdiutil create -size 200m -fs HFS+ -volname "$VOLUME_NAME" "$TEMP_DMG"
 
 # Mount the temporary DMG
 echo "Mounting temporary DMG..."
-MOUNT_DIR=$(hdiutil attach "$TEMP_DMG" -readwrite -noverify -noautoopen | grep "/Volumes/${VOLUME_NAME}" | awk '{print $3}')
+MOUNT_OUTPUT=$(hdiutil attach "$TEMP_DMG" -readwrite -noverify -noautoopen)
+echo "Mount output: $MOUNT_OUTPUT"
+MOUNT_DIR=$(echo "$MOUNT_OUTPUT" | grep "/Volumes/" | sed 's/.*\(\/Volumes\/.*\)/\1/' | tail -1)
 
 if [ -z "$MOUNT_DIR" ]; then
     echo "Error: Failed to mount temporary DMG"
-    exit 1
+    echo "Trying alternative mount path..."
+    MOUNT_DIR="/Volumes/${VOLUME_NAME}"
 fi
 
 echo "Mounted at: $MOUNT_DIR"
 
+# Verify mount point exists and is writable
+if [ ! -d "$MOUNT_DIR" ]; then
+    echo "Error: Mount directory does not exist: $MOUNT_DIR"
+    exit 1
+fi
+
 # Copy application bundle to DMG using ditto (preserves permissions and attributes)
 echo "Copying application to DMG..."
-ditto "$APP_BUNDLE" "$MOUNT_DIR/$(basename "$APP_BUNDLE")"
+if ! ditto "$APP_BUNDLE" "$MOUNT_DIR/$(basename "$APP_BUNDLE")"; then
+    echo "Error: Failed to copy app bundle"
+    echo "Trying with sudo..."
+    sudo ditto "$APP_BUNDLE" "$MOUNT_DIR/$(basename "$APP_BUNDLE")"
+fi
 
 # Create Applications symlink
 echo "Creating Applications symlink..."
