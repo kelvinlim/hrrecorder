@@ -45,9 +45,9 @@ fi
 
 echo "Mounted at: $MOUNT_DIR"
 
-# Copy application bundle to DMG
+# Copy application bundle to DMG using ditto (preserves permissions and attributes)
 echo "Copying application to DMG..."
-cp -R "$APP_BUNDLE" "$MOUNT_DIR/"
+ditto "$APP_BUNDLE" "$MOUNT_DIR/$(basename "$APP_BUNDLE")"
 
 # Create Applications symlink
 echo "Creating Applications symlink..."
