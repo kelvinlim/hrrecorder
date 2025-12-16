@@ -9,6 +9,8 @@ HR Recorder connects to Polar heart rate monitors via Bluetooth Low Energy (BLE)
 ## Features
 
 - **Device Support**: Connect to Polar Verity Sense or Polar H10 chest strap
+- **Device Picker with Addresses**: Scan and select exact devices by name + MAC address
+- **Busy Indicator (Local Soft Lock)**: Marks devices already selected in this app window to avoid double-pick
 - **Live Visualization**: Real-time heart rate plotting (displays last 300 data points)
 - **Configurable Sampling**: Set sampling interval (default: 10 seconds)
 - **Data Persistence**: Automatic periodic saves to prevent data loss
@@ -85,11 +87,18 @@ python main.py
 
 1. **Enter Subject ID**: Type an identifier for the recording session
 2. **Select Device Type**: Choose "Polar Sense" or "Polar H10" from dropdown
-3. **Connect**: Click "Connect" button to scan and pair with device
-4. **Set Sampling**: Adjust sampling interval in seconds (default: 10)
-5. **Start Recording**: Click "Start Recording" to begin data collection
-6. **Monitor**: Watch real-time heart rate plot
-7. **Stop Recording**: Click "Stop Recording" to end and save data
+3. **Scan Devices**: Click "Scan Devices" to list nearby devices as `Name (Address)`; entries marked `[busy]` are already selected in this app window
+4. **Select Device**: Pick the exact device you want; selection stores its address
+5. **Connect**: Click "Connect" to pair to that specific address (prevents accidental cross-pairing)
+6. **Set Sampling**: Adjust sampling interval in seconds (default: 10)
+7. **Start Recording**: Click "Start Recording" to begin data collection
+8. **Monitor**: Watch real-time heart rate plot
+9. **Stop Recording**: Click "Stop Recording" to end and save data
+
+### Multi-user / multi-device tips
+- Run one app window per sensor; each window soft-locks the device it selects (shows `[busy]` in the list)
+- Label devices physically with the last 4 chars of their address to pick the right one
+- If a device is in use elsewhere, disconnect it there before connecting from this app
 
 ### Output Files
 
@@ -106,6 +115,8 @@ JSON structure:
   "date": "2025-12-15",
   "time": "14:30:00",
   "sampling_interval_sec": 10,
+   "device_name": "Polar Sense",
+   "device_address": "AA:BB:CC:DD:EE:FF",
   "data": [
     {
       "timestamp": 1702654200.123,
