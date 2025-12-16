@@ -93,15 +93,22 @@ class HRRecorderApp:
     async def async_scan_devices(self):
         try:
             devices = await self.recorder.scan_devices()
-            self.discovered_devices = devices
-            display_items = []
+            # Filter devices by selected device type
+            filtered_devices = []
             for d in devices:
+                if self.selected_device_type and d['name']:
+                    if self.selected_device_type.lower() in d['name'].lower():
+                        filtered_devices.append(d)
+                        
+            self.discovered_devices = filtered_devices
+            display_items = []
+            for d in filtered_devices:
                 label = f"{d['name']} ({d['address']})"
                 if d['address'] in self.busy_devices:
                     label += " [busy]"
                 display_items.append(label)
             dpg.configure_item("device_list", items=display_items)
-            dpg.set_value("status_text", f"Found {len(devices)} devices")
+            dpg.set_value("status_text", f"Found {len(filtered_devices)} devices matching '{self.selected_device_type}'")
         except Exception as e:
             dpg.set_value("status_text", f"Scan error: {e}")
 
