@@ -16,6 +16,10 @@ class HRRecorderApp:
         self.sampling_interval = 10
         self.last_sample_time = 0
         self.selected_device_type = "Polar Sense"
+        self.selected_device_name = None
+        self.selected_device_address = None
+        self.discovered_devices = []
+        self.busy_devices = set()  # local soft-locks to avoid double pick in same app
         
         # Asyncio Loop Thread - Removed for single thread approach
         # self.loop = asyncio.new_event_loop()
@@ -39,6 +43,8 @@ class HRRecorderApp:
             dpg.add_combo(label="Device Type", items=["Polar Sense", "Polar H10"], 
                           default_value="Polar Sense", callback=self.update_device_type)
             
+            dpg.add_button(label="Scan Devices", callback=self.scan_devices)
+            dpg.add_listbox(items=[], label="Devices", tag="device_list", num_items=6, callback=self.select_device)
             dpg.add_button(label="Connect", callback=self.connect_device)
             dpg.add_text("Status: Disconnected", tag="status_text")
             
@@ -74,15 +80,55 @@ class HRRecorderApp:
         self.selected_device_type = app_data
         print(f"Selected: {app_data}")
 
+    def scan_devices(self):
+        dpg.set_value("status_text", "Scanning for devices...")
+        self.loop.create_task(self.async_scan_devices())
+
+    async def async_scan_devices(self):
+        try:
+            devices = await self.recorder.scan_devices()
+            self.discovered_devices = devices
+            display_items = []
+            for d in devices:
+                label = f"{d['name']} ({d['address']})"
+                if d['address'] in self.busy_devices:
+                    label += " [busy]"
+                display_items.append(label)
+            dpg.configure_item("device_list", items=display_items)
+            dpg.set_value("status_text", f"Found {len(devices)} devices")
+        except Exception as e:
+            dpg.set_value("status_text", f"Scan error: {e}")
+
+    def select_device(self, sender, app_data):
+        # app_data is the selected label
+        if not self.discovered_devices:
+            return
+        label = app_data
+        for d in self.discovered_devices:
+            if d['address'] in label:
+                self.selected_device_name = d['name']
+                self.selected_device_address = d['address']
+                break
+        if self.selected_device_address:
+            busy_flag = " (busy locally)" if self.selected_device_address in self.busy_devices else ""
+            dpg.set_value("status_text", f"Selected {self.selected_device_name} ({self.selected_device_address}){busy_flag}")
+
     def connect_device(self):
-        dpg.set_value("status_text", f"Scanning for {self.selected_device_type}...")
-        # Schedule the coroutine on the existing loop
+        if not self.selected_device_address:
+            dpg.set_value("status_text", "Select a device from the list first")
+            return
+        if self.selected_device_address in self.busy_devices:
+            dpg.set_value("status_text", "Device already in use in this app (busy)")
+            return
+        dpg.set_value("status_text", f"Connecting to {self.selected_device_name} ({self.selected_device_address})...")
         self.loop.create_task(self.async_connect())
 
     async def async_connect(self):
         try:
-            device_name = await self.recorder.scan_and_connect(self.selected_device_type)
-            dpg.set_value("status_text", f"Connected to: {device_name}")
+            device_name = await self.recorder.connect_to_address(self.selected_device_address)
+            self.selected_device_name = device_name
+            self.busy_devices.add(self.selected_device_address)
+            dpg.set_value("status_text", f"Connected to: {device_name} ({self.selected_device_address})")
         except Exception as e:
             dpg.set_value("status_text", f"Error: {e}")
 
@@ -98,7 +144,12 @@ class HRRecorderApp:
             
             dpg.configure_item("sampling_input", enabled=False)
             
-            self.data_manager.set_metadata(self.subject_id, self.sampling_interval)
+            self.data_manager.set_metadata(
+                self.subject_id,
+                self.sampling_interval,
+                device_name=self.selected_device_name,
+                device_address=self.selected_device_address,
+            )
             filename = self.data_manager.create_filename(self.subject_id)
             dpg.set_value("status_text", f"Recording to: {filename}")
             

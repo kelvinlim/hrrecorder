@@ -15,10 +15,12 @@ class DataManager:
         self.sampling_interval = 10
         self.start_datetime = datetime.now()
 
-    def set_metadata(self, subject_id, sampling_interval):
+    def set_metadata(self, subject_id, sampling_interval, device_name=None, device_address=None):
         self.subject_id = subject_id
         self.sampling_interval = sampling_interval
         self.start_datetime = datetime.now()
+        self.device_name = device_name
+        self.device_address = device_address
 
     def create_filename(self, subject_id):
         # We use the time from set_metadata if available, or now
@@ -54,6 +56,8 @@ class DataManager:
             "date": date_str,
             "time": time_str,
             "sampling_interval_sec": self.sampling_interval,
+            "device_name": getattr(self, "device_name", None),
+            "device_address": getattr(self, "device_address", None),
             "data": []
         }
 

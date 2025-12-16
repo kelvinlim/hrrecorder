@@ -9,31 +9,50 @@ class PolarRecorder:
         self.device_client: PolarDevice = None
         self.is_connected = False
         self.hr_callback = None
+        self.connected_name = None
+        self.connected_address = None
 
-    async def scan_and_connect(self, target_name_partial):
-        """Scans for a device containing target_name_partial and connects to the first one found."""
-        print(f"Scanning for devices containing '{target_name_partial}'...")
+    async def scan_devices(self):
+        """Return list of devices with name and address."""
         devices = await BleakScanner.discover()
-        target_device = None
-        
+        results = []
         for d in devices:
-            # print(f"Found: {d.name} ({d.address})")
-            if d.name and target_name_partial.lower() in d.name.lower():
-                target_device = d
-                break
-        
-        if not target_device:
-            raise Exception(f"Device containing '{target_name_partial}' not found.")
-            
-        print(f"Connecting to {target_device.name} ({target_device.address})...")
-        
+            name = d.name or "Unknown"
+            addr = d.address
+            if addr:
+                results.append({"name": name, "address": addr, "device": d})
+        return results
+
+    async def connect_to_address(self, address):
+        """Find and connect to a device by exact address."""
+        if not address:
+            raise Exception("No device address provided")
+
+        print(f"Connecting to address {address}...")
         max_retries = 3
+        target_device = None
+
+        # Try find by address quickly
+        target_device = await BleakScanner.find_device_by_address(address, timeout=8.0)
+        if not target_device:
+            # Fallback to full scan
+            devices = await BleakScanner.discover()
+            for d in devices:
+                if d.address == address:
+                    target_device = d
+                    break
+
+        if not target_device:
+            raise Exception(f"Device with address {address} not found.")
+
         for attempt in range(max_retries):
             try:
                 self.device_client = PolarDevice(target_device)
                 await self.device_client.connect()
                 self.is_connected = True
-                print("Connected successfully.")
+                self.connected_name = target_device.name or "Unknown"
+                self.connected_address = target_device.address
+                print(f"Connected successfully to {self.connected_name} ({self.connected_address}).")
                 break
             except Exception as e:
                 print(f"Connection attempt {attempt + 1}/{max_retries} failed: {e}")
@@ -42,13 +61,15 @@ class PolarRecorder:
                     traceback.print_exc()
                     raise e
                 await asyncio.sleep(2.0)
-        
-        return target_device.name
+
+        return self.connected_name
 
     async def disconnect(self):
         if self.device_client and self.is_connected:
             await self.device_client.disconnect()
             self.is_connected = False
+            self.connected_name = None
+            self.connected_address = None
             print("Disconnected.")
 
     async def start_hr_stream(self, callback):
