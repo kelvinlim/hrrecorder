@@ -34,7 +34,7 @@ class HRRecorderApp:
         self.start_time = None
 
         dpg.create_context()
-        dpg.create_viewport(title='HR Recorder', width=800, height=600)
+        dpg.create_viewport(title='HR Recorder', width=800, height=750)
         
         with dpg.window(tag="Primary Window"):
             dpg.add_text("Polar Device Connection")
@@ -65,7 +65,8 @@ class HRRecorderApp:
             dpg.add_spacer(height=10)
             dpg.add_button(label="Exit", callback=self.exit_app)
             
-            dpg.add_spacer(height=5)
+            # Add bottom padding so version label stays visible
+            dpg.add_spacer(height=24)
             with dpg.group(horizontal=True):
                 dpg.add_spacer(width=-1)
                 dpg.add_text(f"v{__version__}", color=(128, 128, 128))
@@ -209,7 +210,8 @@ class HRRecorderApp:
                     if time.time() - self.last_save_time >= 30:
                         self.data_manager.save_buffer()
                         self.last_save_time = time.time()
-                        dpg.set_value("status_text", f"Auto-saved at {time.strftime('%H:%M:%S')}")
+                        filename = os.path.basename(self.data_manager.current_filename) if self.data_manager.current_filename else "unknown"
+                        dpg.set_value("status_text", f"Auto-saved to {filename} at {time.strftime('%H:%M:%S')}")
                 
                 if self.start_time:
                     rel_time = ts - self.start_time
