@@ -99,4 +99,24 @@ class PolarRecorder:
 
     async def stop_hr_stream(self):
         if self.device_client and self.is_connected:
-            await self.device_client.stop_heartrate_stream()
+            try:
+                await self.device_client.stop_heartrate_stream()
+            except Exception as e:
+                print(f"Warning: Failed to stop HR stream gracefully: {e}")
+
+    async def get_battery_level(self):
+        """Fetch battery level from the device using standard Battery Service (0x180F)."""
+        if not self.is_connected or not self.device_client:
+            return None
+        
+        try:
+            # Battery Level Characteristic UUID: 2A19
+            # The client property in PolarDevice is usually the BleakClient
+            client = self.device_client.client
+            if client and client.is_connected:
+                battery_data = await client.read_gatt_char("00002a19-0000-1000-8000-00805f9b34fb")
+                if battery_data:
+                    return int(battery_data[0])
+        except Exception as e:
+            print(f"Error fetching battery level: {e}")
+        return None

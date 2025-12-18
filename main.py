@@ -2,6 +2,7 @@ import dearpygui.dearpygui as dpg
 import threading
 import time
 import asyncio
+import os
 from data_manager import DataManager
 from recorder import PolarRecorder
 from version import __version__
@@ -21,6 +22,9 @@ class HRRecorderApp:
         self.selected_device_address = None
         self.discovered_devices = []
         self.busy_devices = set()  # local soft-locks to avoid double pick in same app
+        self.battery_level = None
+        self.last_battery_check = 0
+
         
         # Asyncio Loop Thread - Removed for single thread approach
         # self.loop = asyncio.new_event_loop()
@@ -37,9 +41,13 @@ class HRRecorderApp:
         dpg.create_viewport(title='HR Recorder', width=800, height=750)
         
         with dpg.window(tag="Primary Window"):
-            dpg.add_text("Polar Device Connection")
+            with dpg.group(horizontal=True):
+                dpg.add_text("Polar Device Connection")
+                dpg.add_spacer(width=200)
+                dpg.add_text("Battery: --%", tag="battery_text", color=(0, 255, 0))
             
             dpg.add_input_text(label="Subject ID", default_value="test", callback=self.update_subject_id)
+
             
             dpg.add_combo(label="Device Type", items=["Polar Sense", "Polar H10"], 
                           default_value="Polar Sense", callback=self.update_device_type)
@@ -230,8 +238,24 @@ class HRRecorderApp:
     async def main_loop(self):
         while dpg.is_dearpygui_running():
             self.update_plot()
+            await self.check_battery()
             dpg.render_dearpygui_frame()
             await asyncio.sleep(0.001) # Yield to allow BLE events to process
+
+    async def check_battery(self):
+        if self.recorder.is_connected:
+            current_time = time.time()
+            # Check battery every 60 seconds
+            if current_time - self.last_battery_check >= 60:
+                level = await self.recorder.get_battery_level()
+                if level is not None:
+                    self.battery_level = level
+                    dpg.set_value("battery_text", f"Battery: {self.battery_level}%")
+                self.last_battery_check = current_time
+        else:
+            if self.battery_level is not None:
+                self.battery_level = None
+                dpg.set_value("battery_text", "Battery: --%")
 
     def exit_app(self, sender=None, app_data=None):
         dpg.stop_dearpygui()
