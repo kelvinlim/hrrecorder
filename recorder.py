@@ -11,7 +11,7 @@ class PolarRecorder:
         self.hr_callback = None
         self.connected_name = None
         self.connected_address = None
-        self.disconnect_callback = None
+        self.is_streaming = False
 
 
     async def scan_devices(self):
@@ -51,9 +51,14 @@ class PolarRecorder:
             try:
                 self.device_client = PolarDevice(target_device)
                 
-                # Set disconnect callback on the underlying Bleak client
-                if self.disconnect_callback:
-                    self.device_client.client.set_disconnected_callback(self.disconnect_callback)
+                # Check for BleakClient attribute to set callback safely
+                client = getattr(self.device_client, 'client', None)
+                if client:
+                    if hasattr(client, 'set_disconnected_callback'):
+                         client.set_disconnected_callback(self.on_ble_disconnect)
+                    elif hasattr(client, 'disconnected_callback'):
+                         # Some versions use a property or different name
+                         client.disconnected_callback = self.on_ble_disconnect
                 
                 await self.device_client.connect()
                 self.is_connected = True
@@ -74,10 +79,17 @@ class PolarRecorder:
 
     async def disconnect(self):
         if self.device_client and self.is_connected:
-            await self.device_client.disconnect()
+            try:
+                # Add timeout to disconnect to prevent hanging
+                await asyncio.wait_for(self.device_client.disconnect(), timeout=10.0)
+            except asyncio.TimeoutError:
+                print("Disconnect timed out.")
+            except Exception as e:
+                print(f"Error during disconnect: {e}")
             self.is_connected = False
             self.connected_name = None
             self.connected_address = None
+            self.is_streaming = False
             print("Disconnected.")
 
     async def start_hr_stream(self, callback):
@@ -104,13 +116,21 @@ class PolarRecorder:
 
         self.device_client.set_callback(heartrate_callback=internal_callback)
         await self.device_client.start_heartrate_stream()
+        self.is_streaming = True
 
     async def stop_hr_stream(self):
         if self.device_client and self.is_connected:
             try:
                 await self.device_client.stop_heartrate_stream()
+                self.is_streaming = False
             except Exception as e:
                 print(f"Warning: Failed to stop HR stream gracefully: {e}")
+
+    def on_ble_disconnect(self, client):
+        """Called by Bleak when device disconnects."""
+        print("BLE Disconnect detected in recorder")
+        self.is_connected = False
+        self.is_streaming = False
 
     async def get_battery_level(self):
         """Fetch battery level from the device using standard Battery Service (0x180F)."""
@@ -137,8 +157,4 @@ class PolarRecorder:
                 print(f"Error fetching battery level: {e}")
         return None
 
-    def set_disconnect_callback(self, callback):
-        """Set a function to be called when the device disconnects."""
-        self.disconnect_callback = callback
-        if self.device_client and self.device_client.client:
-            self.device_client.client.set_disconnected_callback(callback)
+

@@ -39,8 +39,10 @@ class DataManager:
 
     def add_data_point(self, timestamp, hr):
         """Adds a data point to the buffer."""
+        iso_time = datetime.fromtimestamp(timestamp).isoformat()
         self.data_buffer.append({
             "timestamp": timestamp,
+            "datetime": iso_time,
             "hr": hr
         })
 
