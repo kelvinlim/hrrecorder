@@ -11,6 +11,8 @@ class PolarRecorder:
         self.hr_callback = None
         self.connected_name = None
         self.connected_address = None
+        self.disconnect_callback = None
+
 
     async def scan_devices(self):
         """Return list of devices with name and address."""
@@ -48,11 +50,17 @@ class PolarRecorder:
         for attempt in range(max_retries):
             try:
                 self.device_client = PolarDevice(target_device)
+                
+                # Set disconnect callback on the underlying Bleak client
+                if self.disconnect_callback:
+                    self.device_client.client.set_disconnected_callback(self.disconnect_callback)
+                
                 await self.device_client.connect()
                 self.is_connected = True
                 self.connected_name = target_device.name or "Unknown"
                 self.connected_address = target_device.address
                 print(f"Connected successfully to {self.connected_name} ({self.connected_address}).")
+
                 break
             except Exception as e:
                 print(f"Connection attempt {attempt + 1}/{max_retries} failed: {e}")
@@ -114,9 +122,23 @@ class PolarRecorder:
             # The client property in PolarDevice is usually the BleakClient
             client = self.device_client.client
             if client and client.is_connected:
-                battery_data = await client.read_gatt_char("00002a19-0000-1000-8000-00805f9b34fb")
+                # Add timeout to avoid hanging the entire app if BLE read stalls
+                battery_data = await asyncio.wait_for(
+                    client.read_gatt_char("00002a19-0000-1000-8000-00805f9b34fb"),
+                    timeout=5.0
+                )
                 if battery_data:
                     return int(battery_data[0])
+        except asyncio.TimeoutError:
+            print("Timeout fetching battery level.")
         except Exception as e:
-            print(f"Error fetching battery level: {e}")
+            # We don't want to spam logs if it's a transient disconnection error
+            if self.is_connected:
+                print(f"Error fetching battery level: {e}")
         return None
+
+    def set_disconnect_callback(self, callback):
+        """Set a function to be called when the device disconnects."""
+        self.disconnect_callback = callback
+        if self.device_client and self.device_client.client:
+            self.device_client.client.set_disconnected_callback(callback)

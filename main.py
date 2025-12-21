@@ -24,6 +24,9 @@ class HRRecorderApp:
         self.busy_devices = set()  # local soft-locks to avoid double pick in same app
         self.battery_level = None
         self.last_battery_check = 0
+        self.is_reconnecting = False
+        
+        self.recorder.set_disconnect_callback(self.on_disconnect)
 
         
         # Asyncio Loop Thread - Removed for single thread approach
@@ -151,8 +154,48 @@ class HRRecorderApp:
             self.selected_device_name = device_name
             self.busy_devices.add(self.selected_device_address)
             dpg.set_value("status_text", f"Connected to: {device_name} ({self.selected_device_address})")
+            
+            # If we were reconnecting, resume stream if recording
+            if self.is_reconnecting:
+                self.is_reconnecting = False
+                if self.is_recording:
+                    dpg.set_value("status_text", "Reconnected! Resuming stream...")
+                    await self.recorder.start_hr_stream(self.handle_hr_data)
         except Exception as e:
-            dpg.set_value("status_text", f"Error: {e}")
+            if self.is_reconnecting:
+                # Silently fail and let the retry loop handle it
+                pass
+            else:
+                dpg.set_value("status_text", f"Error: {e}")
+
+    def on_disconnect(self, client):
+        print(f"Device disconnected: {self.selected_device_address}")
+        # Use call_soon_threadsafe because this callback might come from a different thread
+        self.loop.call_soon_threadsafe(self.handle_disconnect_event)
+
+    def handle_disconnect_event(self):
+        self.recorder.is_connected = False
+        if self.is_recording and not self.is_reconnecting:
+            self.is_reconnecting = True
+            dpg.set_value("status_text", "Connection Lost. Attempting to reconnect...")
+            self.loop.create_task(self.reconnect_loop())
+        elif not self.is_reconnecting:
+            dpg.set_value("status_text", "Status: Disconnected")
+
+    async def reconnect_loop(self):
+        while self.is_reconnecting and self.is_recording:
+            print("Attempting reconnection...")
+            try:
+                await self.async_connect()
+                if self.recorder.is_connected:
+                    # async_connect handles clearing is_reconnecting and resuming stream
+                    break
+            except Exception:
+                pass
+            await asyncio.sleep(5) # Wait 5 seconds before next attempt
+        
+        if not self.is_recording:
+            self.is_reconnecting = False
 
     def toggle_recording(self):
         if not self.is_recording:
@@ -238,24 +281,30 @@ class HRRecorderApp:
     async def main_loop(self):
         while dpg.is_dearpygui_running():
             self.update_plot()
-            await self.check_battery()
+            self.check_battery() # Don't await, it will spawn a task if needed
             dpg.render_dearpygui_frame()
             await asyncio.sleep(0.001) # Yield to allow BLE events to process
 
-    async def check_battery(self):
+    def check_battery(self):
         if self.recorder.is_connected:
             current_time = time.time()
             # Check battery every 60 seconds
             if current_time - self.last_battery_check >= 60:
-                level = await self.recorder.get_battery_level()
-                if level is not None:
-                    self.battery_level = level
-                    dpg.set_value("battery_text", f"Battery: {self.battery_level}%")
-                self.last_battery_check = current_time
+                self.last_battery_check = current_time # Update immediately to avoid multiple tasks
+                self.loop.create_task(self.async_check_battery())
         else:
             if self.battery_level is not None:
                 self.battery_level = None
                 dpg.set_value("battery_text", "Battery: --%")
+
+    async def async_check_battery(self):
+        try:
+            level = await self.recorder.get_battery_level()
+            if level is not None:
+                self.battery_level = level
+                dpg.set_value("battery_text", f"Battery: {self.battery_level}%")
+        except Exception as e:
+            print(f"Background battery check failed: {e}")
 
     def exit_app(self, sender=None, app_data=None):
         dpg.stop_dearpygui()
