@@ -9,9 +9,22 @@ from version import __version__
 import queue
 import logging
 
-# Configure logging to file
+import logging
+from pathlib import Path
+
+def get_app_data_path():
+    """Returns the absolute path to a standard user directory for data."""
+    # Using Documents/HRRecorder for easy user access
+    base_path = Path(os.path.expanduser("~/Documents")) / "HRRecorder"
+    base_path.mkdir(parents=True, exist_ok=True)
+    return base_path
+
+APP_DATA_PATH = get_app_data_path()
+LOG_FILE = APP_DATA_PATH / "hrrecorder.log"
+
+# Configure logging to file in the standard directory
 logging.basicConfig(
-    filename='hrrecorder.log',
+    filename=str(LOG_FILE),
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
@@ -19,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 class HRRecorderApp:
     def __init__(self):
-        self.data_manager = DataManager()
+        self.data_manager = DataManager(output_dir=str(APP_DATA_PATH))
         self.recorder = PolarRecorder()
         
         self.is_recording = False
@@ -74,6 +87,9 @@ class HRRecorderApp:
             dpg.add_text("Status: Disconnected", tag="status_text")
             dpg.add_text("Last Data: --:--:--", tag="last_data_text")
             dpg.add_text("Total Time: 00:00:00", tag="total_time_text")
+            
+            dpg.add_spacer(height=5)
+            dpg.add_text(f"Saving to: {APP_DATA_PATH}", color=(200, 200, 200), wrap=750)
             
             dpg.add_separator()
             

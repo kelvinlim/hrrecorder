@@ -2,7 +2,7 @@
 ; Builds a Windows installer for the HR Recorder application
 
 #define MyAppName "HR Recorder"
-#define MyAppVersion "1.0.16"
+#define MyAppVersion "1.0.17"
 #define MyAppPublisher "Kelvin Lim"
 #define MyAppURL "https://github.com/kelvinlim/hrrecorder"
 #define MyAppExeName "hrrecorder.exe"
