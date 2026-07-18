@@ -1,4 +1,4 @@
 dearpygui
 bleak
-git+https://github.com/ZheLearn/polar-python.git
+git+https://github.com/ZheLearn/polar-python.git@e5129c0bfa789044b29e8e1f1ba186912b23bf3a
 pyinstaller

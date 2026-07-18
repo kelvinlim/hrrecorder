@@ -1,6 +1,7 @@
 import asyncio
 from bleak import BleakScanner
-from polar_python import PolarDevice, HRData
+from polar_python import PolarDevice
+from polar_python.models import HRData
 import logging
 
 class PolarRecorder:
@@ -114,14 +115,13 @@ class PolarRecorder:
             if self.hr_callback:
                 self.hr_callback(time.time(), hr_val)
 
-        self.device_client.set_callback(heartrate_callback=internal_callback)
-        await self.device_client.start_heartrate_stream()
+        await self.device_client.start_hr_stream(internal_callback)
         self.is_streaming = True
 
     async def stop_hr_stream(self):
         if self.device_client and self.is_connected:
             try:
-                await self.device_client.stop_heartrate_stream()
+                await self.device_client.stop_hr_stream()
                 self.is_streaming = False
             except Exception as e:
                 print(f"Warning: Failed to stop HR stream gracefully: {e}")
